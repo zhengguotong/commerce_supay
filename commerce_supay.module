@@ -1,0 +1,109 @@
+<?php
+/**
+ * @file
+ * @author Guotong Zheng (Tony)
+ * @website http://visionsoft.com.au
+ * Implements Royal Pay payment services for use with Drupal Commerce
+ */
+
+ /**
+ * Implements hook_menu().
+ */
+// function commerce_supay_menu() {
+//     // Add a menu callback for Alipay's notification on operation processing.
+//     $items['commerce_alipay_global/notify'] = array(
+//         'page callback' => 'commerce_royalpay_process_notify',
+//         'access callback' => TRUE,
+//         'type' => MENU_CALLBACK,
+//     );
+
+//     return $items;
+// }
+
+/**
+ * Implements hook_commerce_payment_method_info().
+ */
+function commerce_supay_commerce_payment_method_info() {
+    $payment_methods = array();
+
+    // Declare Supay payment method to redirect to external site.
+    $payment_methods['supay'] = array(
+        'base' => 'commerce_supay',
+        'title' => t('Supay'),
+        'terminal' => FALSE,
+        'offsite' => TRUE,
+        'offsite_autoredirect' => TRUE,
+    );
+
+    return $payment_methods;
+}
+
+/**
+ * Payment method callback: settings form.
+ */
+function commerce_supay_settings_form($settings = NULL) {
+    $form = array();
+ 
+    $form['merchant_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Merchant Id'),
+        '#description' => t("Merchant Id  provided by Supay Tech"),
+        '#default_value' => isset($settings['merchant_id']) ?$settings['merchant_id'] : '',
+        '#required' => TRUE,
+    );
+    
+    $form['authentication_code'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Authentication Code'),
+        '#description' => t("Authentication Code provided by by Supay Tech"),
+        '#default_value' => isset($settings['authentication_code'])?$settings['authentication_code'] : '' ,
+        '#required' => TRUE,
+    );
+
+    // Enable debug mode.
+    $form['debug'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Enable debug mode <strong>(for development use only)</strong>'),
+        '#description' => t('<strong>Override all transactions to a total of 0.01 </strong> for testing the configuration and making sure that payments can be received on the correct account.<br/>This setting should only be used for development purposes.'),
+        '#default_value' => isset($settings['debug']) ? $settings['debug'] : '',
+    );
+
+    return $form;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Modify the payment method selection pane on Checkout to add supay icons.
+ */
+function commerce_supay_form_commerce_checkout_form_alter(&$form, &$form_state)
+{
+    // If this checkout form contains the payment method radios...
+    if (!empty($form['commerce_payment']['payment_method']['#options'])) {
+        // Loop over its options array looking for a Alipay option.
+        foreach ($form['commerce_payment']['payment_method']['#options'] as $key => &$value) {
+            list($method_id, $rule_name) = explode('|', $key);
+
+            // If we find Alipay...
+            if ($method_id == 'supay') {
+                // Prepare the replacement radio button text with icons.
+                $icons_path = drupal_get_path('module', 'commerce_supay') . '/images/';
+
+                // Generate Alipay logo image markup.
+                $supay_label = t('Supay');
+                $supay_icon = theme('image', array(
+                    'path' => $icons_path . 'supay.png',
+                    'title' => $supay_label,
+                    'alt' => $supay_icon,
+                    'attributes' => array('class' => 'commerce-supay-icon'),
+                ));
+
+                // Generate the aggregated markup.
+                $value = $supay_icon ;
+
+                break;
+            }
+        }
+    }
+}
+

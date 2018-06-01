@@ -34,6 +34,5 @@ Follow all other steps as described in the Payments User Guide, edit the Alipay
 payment method (Rule) and then edit the Action "Enable payment method: Alipay".
 
 Configure the form Payment Settings as required with:
-- Currency Code(Currently Royal Pay only accept AUD or CNY )
-- partner Code and credential_code royalpay API after account registration for
-the corresponding type of Service.
+- Currency Code(Currently Supay only accept AUD )
+- Merchant ID and Authentication code 
