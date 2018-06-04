@@ -5,8 +5,9 @@
  * @website http://visionsoft.com.au
  * Implements Royal Pay payment services for use with Drupal Commerce
  */
+define('SUPAY_API_GATEWAY','http://www.supayedu.com/payment/bridge/merchant_request');
 
- /**
+/*
  * Implements hook_menu().
  */
 // function commerce_supay_menu() {
@@ -94,10 +95,10 @@ function commerce_supay_form_commerce_checkout_form_alter(&$form, &$form_state)
                 $supay_icon = theme('image', array(
                     'path' => $icons_path . 'supay.png',
                     'title' => $supay_label,
-                    'alt' => $supay_icon,
+                    'alt' => $supay_label,
                     'attributes' => array('class' => 'commerce-supay-icon'),
                 ));
-
+               
                 // Generate the aggregated markup.
                 $value = $supay_icon ;
 
@@ -105,5 +106,92 @@ function commerce_supay_form_commerce_checkout_form_alter(&$form, &$form_state)
             }
         }
     }
+}
+
+ /**
+ * Payment method callback: adds a message to the submission form.
+ */
+function commerce_supay_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+    $form['supay_information'] = array(
+        '#markup' => '<span class="commerce-supay-info">' . t('(Continue with checkout to complete payment via Supay.)') . '</span>',
+    );
+
+    return $form;
+}
+
+/**
+ * Payment method callback: redirect form.
+ *
+ * Prepares the necessary data to be passed to Alipay with the redirection.
+ */
+function commerce_supay_redirect_form($form, &$form_state, $order, $payment_method) {
+    // Return an error if the enabled action's settings haven't been configured.
+    if (empty($payment_method['settings']['merchant_id'])) {
+        drupal_set_message(t('supay is not configured for use. No merchat ID has been specified.'), 'error');
+        return array();
+    }
+    $form = array();
+    $wrapper = entity_metadata_wrapper('commerce_order', $order);
+    $currency_code = $wrapper->commerce_order_total->currency_code->value();
+
+    // Override transaction amount if debug mode is enabled.
+    $amount = $payment_method['settings']['debug'] ? 1 : $wrapper->commerce_order_total->amount->value();
+    //$amount = commerce_currency_amount_to_decimal($amount, $currency_code);
+
+    // // Set feedback URLs.
+    // $settings = array(
+    //     // Return to the payment redirect page for processing successful payments.
+    //     'return' => url('checkout/' . $order->order_id . '/payment/return/' . $order->data['payment_redirect_key'], array('absolute' => TRUE)),
+    //     //'notify_url' => url('commerce_alipay_global/notify', array('absolute' => TRUE)),
+    // );
+    $merchant_trade_no = commerce_supay_get_order_id($order->order_number);
+
+    $data = array(
+        'merchant_id' => $payment_method['settings']['merchant_id'],
+        'authentication_code' => $payment_method['settings']['authentication_code'],
+        'merchant_trade_no' => $merchant_trade_no,
+        'total_amount' => $amount,
+    );
+    $token = md5(drupal_http_build_query( $data));
+    
+    $data += array(
+        'create_time' =>gmdate('Y-m-d H-i:s'),
+        'currency' => $currency_code,
+        'notification_url' => url('commerce_alipay_global/notify', array('absolute' => TRUE)),
+    )
+    ;
+    // $input = new RoyalPayUnifiedOrder();
+    // $input->setPartnerInfo($payment_method['settings']['partner_code'],$payment_method['settings']['credential_code']);
+
+    // $input->setOrderId(commerce_royalpay_get_order_id($order->order_number));
+    // $input->setDescription( ' order:' . $order->order_number);
+    // $input->setPrice($amount);
+    // $input->setCurrency($currency_code);
+    // // $input->setNotifyUrl('');
+    // $input->setOperator("123456");
+
+    // $result = RoyalPayApi::qrOrder($input);
+
+    // $inputObj = new RoyalPayRedirect();
+    // $inputObj->setPartnerInfo($payment_method['settings']['partner_code'],$payment_method['settings']['credential_code']);
+    // $inputObj->setRedirect($settings['return']);
+
+    // $form['pay_url'] = array('#type' => 'hidden',
+    //                              '#value' => RoyalPayApi::getQRRedirectUrl($result['pay_url'], $inputObj));
+    // $form['submit'] = array(
+    //     '#type' => 'submit',
+    //     '#value' => t('Proceed with royalpay'),
+    //     '#submit' => array('commerce_royalpay_redirect'),
+    // );
+    
+    return $form;
+}
+
+function commerce_supay_get_order_id($order_id){
+    return str_pad($order_id,10,'0',STR_PAD_LEFT) . date('dmYhis');
+}
+
+function commerce_supay_get_dc_order_id($order_id){
+    return (int) substr($order_id, 0, 10);
 }
 
