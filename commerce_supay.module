@@ -152,7 +152,7 @@ function commerce_supay_redirect_form($form, &$form_state, $order, $payment_meth
 
     // Override transaction amount if debug mode is enabled.
     $amount = $payment_method['settings']['debug'] ? 1 : $wrapper->commerce_order_total->amount->value();
-    //$amount = commerce_currency_amount_to_decimal($amount, $currency_code);
+    $amount = commerce_currency_amount_to_decimal($amount, $currency_code);
 
     $merchant_trade_no = commerce_supay_get_order_id($order->order_number);
 
